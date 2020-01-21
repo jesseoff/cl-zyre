@@ -439,6 +439,8 @@ can be any valid event returned from zyre-pipe."
     (event (stop (event-zyre origin)))))
 
 (define-condition zyre-idle () ())
+(defun stop-zyre () (invoke-restart 'stop-zyre))
+(defun poll-some-ms (ms) (invoke-restart 'poll-some-ms ms))
 
 (defun zyre-pipe (&key (name (cffi:null-pointer)) headers group interface port)
   "Initializes and starts up a Zyre node and returns an infinite pipe of Zyre events as conditions.
@@ -490,12 +492,11 @@ will be resignalled. 'stop initiates a graceful exit from the zyre network."
          (zyre-recv-maybe (to)
            (declare (type fixnum to) (optimize speed))
            (restart-case (%zyre-recv-maybe to)
-             (stop () (prog1 (stop-event) (stop zyre)))
-             (try-again () (zyre-recv-maybe 0))
+             (stop-zyre () (prog1 (stop-event) (stop zyre)))
+             (use-value (x) x)
              (poll-some-ms (ms) (zyre-recv-maybe ms))))
          (annotate-event (ev)
-           (declare (type event ev))
-           (setf (event-zyre ev) zyre)
+           (when (typep ev 'event) (setf (event-zyre ev) zyre))
            (match ev
              ((enter-event (uuid u))
               (setf (gethash u (enter-events-by-uuid zyre)) ev))

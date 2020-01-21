@@ -40,11 +40,29 @@ Distributed under the MIT license (see LICENSE file)
            #:shout-event
            #:other-event
 
+           ;; Zyre event accessors
+           #:event-msg
+           #:event-zyre
+           #:name
+           #:uuid
+           #:headers
+           #:peer-addr
+           #:group
+           #:event-type
+
            ;; Misc classes
            #:zyre-state
            #:zsock
            #:zframe
            #:zyre-idle
+
+           ;; Zyre-state class accessors
+           #:stopped
+           #:enter-events-by-uuid
+
+           ;; Restarts
+           #:poll-some-ms
+           #:stop-zyre
 
            ;; Zyre actions
            #:whisper
