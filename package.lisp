@@ -8,11 +8,6 @@ Distributed under the MIT license (see LICENSE file)
   (:use #:cl #:trivia)
   (:export #:zyre-pipe
 
-           ;; Zyre applications
-           #:zpinger
-           #:zyredir
-           #:zyre-daemon
-
            ;; ZeroMQ utils
            #:make-zsock
            #:zsock-endpoint
