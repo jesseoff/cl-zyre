@@ -477,7 +477,7 @@ will be resignalled. 'stop initiates a graceful exit from the zyre network."
     (labels
         ((next-event-pipe ()
            (if (stopped zyre)
-               'empty-pipe
+               :empty-pipe
                (pipe-cons (zyre-recv-maybe 0) (next-event-pipe))))
          (start-event () (make-condition 'start-event :uuid (uuid zyre) :name (name zyre)))
          (stop-event () (make-condition 'stop-event :uuid (uuid zyre) :name (name zyre)))
