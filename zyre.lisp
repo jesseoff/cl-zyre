@@ -139,6 +139,7 @@ Distributed under the MIT license (see LICENSE file)
          (prog1 (cffi:foreign-string-to-lisp x)
            (zstr-free x)))
        (listify ()
+         (declare (optimize speed (safety 0) (debug 0)))
          (let ((x (zlist-pop zlist)))
            (if (not (cffi:null-pointer-p x))
                (cons (zstr x) (listify))
@@ -228,7 +229,7 @@ Distributed under the MIT license (see LICENSE file)
   (zmsg :pointer))
 
 (defun zmsg-popstr (zmsg)
-  (declare (type (or zmsg cffi:foreign-pointer) zmsg))
+  (declare (type (or zmsg cffi:foreign-pointer) zmsg) (optimize speed (safety 0) (debug 0)))
   (etypecase zmsg
     (zmsg (zmsg-popstr (raw-zmsg zmsg)))
     (cffi:foreign-pointer
@@ -240,7 +241,7 @@ Distributed under the MIT license (see LICENSE file)
   (zmsg :pointer))
 
 (defun zmsg-pop (zmsg)
-  (declare (type (or zmsg cffi:foreign-pointer) zmsg))
+  (declare (type (or zmsg cffi:foreign-pointer) zmsg) (optimize speed (safety 0) (debug 0)))
   (etypecase zmsg
     (zmsg (%zmsg-pop (raw-zmsg zmsg)))
     (cffi:foreign-pointer (%zmsg-pop zmsg))))
@@ -252,7 +253,7 @@ Distributed under the MIT license (see LICENSE file)
   (zframe :pointer))
 
 (defun zframe-destroy (zframe)
-  (declare (type (or zframe cffi:foreign-pointer) zframe))
+  (declare (type (or zframe cffi:foreign-pointer) zframe) (optimize speed (safety 0) (debug 0)))
   (etypecase zframe
     (zframe (zframe-destroy (raw-zframe zframe))
      (tg:cancel-finalization zframe))
@@ -265,7 +266,7 @@ Distributed under the MIT license (see LICENSE file)
   (zmsg :pointer))
 
 (defun zmsg-destroy (zmsg)
-  (declare (type (or zmsg cffi:foreign-pointer) zmsg))
+  (declare (type (or zmsg cffi:foreign-pointer) zmsg) (optimize speed (safety 0) (debug 0)))
   (etypecase zmsg
     (zmsg (zmsg-destroy (raw-zmsg zmsg))
      (tg:cancel-finalization zmsg))
@@ -323,7 +324,7 @@ Distributed under the MIT license (see LICENSE file)
     (%zhash-destroy ptr)))
 
 (defun zhash-to-alist (zhash)
-  (declare (type cffi:foreign-pointer zhash) (optimize speed))
+  (declare (type cffi:foreign-pointer zhash) (optimize speed (safety 0) (debug 0)))
   (labels
       ((zhash-alist (z)
          (if (cffi::null-pointer-p z)
@@ -360,7 +361,7 @@ Distributed under the MIT license (see LICENSE file)
 
 ;; Currently accepts only the raw C zmsgs, not instances of zmsg Lisp class
 (defun zyre-zmsg-to-condition (zmsg)
-  (declare (type cffi:foreign-pointer zmsg) (optimize speed))
+  (declare (type cffi:foreign-pointer zmsg) (optimize speed (safety 0) (debug 0)))
   (let*
       ((type (zmsg-popstr zmsg))
        (uuid (zmsg-popstr zmsg))
@@ -402,6 +403,7 @@ Distributed under the MIT license (see LICENSE file)
 peer-uuid-or-uuids message). First form sends a message to the origin event's peer-uuid, second form
 takes a uuid string or list of uuid strings. Event can be any valid event returned from a
 zyre-pipe."
+  (declare (optimize speed (safety 0) (debug 0)))
   (when (and y (consp x)) (mapc (lambda (z) (whisper origin z y)) x))
   (etypecase origin
     (zyre-state (zyre-whispers (raw-zyre origin) x (if y y "")))
@@ -413,6 +415,7 @@ zyre-pipe."
   "Sends a Zyre SHOUT message to a group(s). Forms are (shout event message) or (shout event group
 message). First form sends message to all joined group(s), second form sends to a named group. Event
 can be any valid event returned from zyre-pipe."
+  (declare (optimize speed (safety 0) (debug 0)))
   (etypecase origin
     (zyre-state
      (if y
@@ -422,6 +425,7 @@ can be any valid event returned from zyre-pipe."
 
 (defun join (origin group)
   "Joins a Zyre group or list of groups."
+  (declare (optimize speed (safety 0) (debug 0)))
   (when (consp group) (mapc (lambda (x) (join origin x)) group))
   (etypecase origin
     (zyre-state
@@ -431,6 +435,7 @@ can be any valid event returned from zyre-pipe."
 
 (defun leave (origin group)
   "Leaves a Zyre group or list of groups."
+  (declare (optimize speed (safety 0) (debug 0)))
   (when (consp group) (mapc (lambda (x) (leave origin x)) group))
   (etypecase origin
     (zyre-state
@@ -440,6 +445,7 @@ can be any valid event returned from zyre-pipe."
 
 (defun stop (origin)
   "Stops Zyre node."
+  (declare (optimize speed (safety 0) (debug 0)))
   (etypecase origin
     (zyre-state
      (when (not (stopped origin))
@@ -470,6 +476,7 @@ When there are no new events, a condition of type zyre-idle is signalled. Valid 
 'poll-some-ms takes a argument in milliseconds to continue waiting for, at which point the condition
 will be resignalled. 'stop initiates a graceful exit from the zyre network. 'use-value allows a
 handler to insert a sentinel value into the zyre-pipe output."
+  (declare (optimize speed (safety 0) (debug 0)))
   (let* ((z (zyre-new name))
          (zp (zpoller-new (%zyre-socket z) :pointer (cffi:null-pointer)))
          (zyre (make-instance 'zyre-state :raw-zyre z :raw-zpoller zp
@@ -488,6 +495,7 @@ handler to insert a sentinel value into the zyre-pipe output."
     (zyre-start z)
     (labels
         ((next-event-pipe ()
+           (declare (optimize speed (safety 0) (debug 0)))
            (if (stopped zyre)
                :empty-pipe
                (pipe-cons (zyre-recv-maybe 0) (next-event-pipe))))
@@ -496,7 +504,7 @@ handler to insert a sentinel value into the zyre-pipe output."
            (prog1 (make-condition 'stop-event :uuid (uuid zyre) :name (name zyre))
              (stop zyre)))
          (%zyre-recv-maybe (to)
-           (declare (type fixnum to) (optimize speed))
+           (declare (type fixnum to) (optimize speed (safety 0) (debug 0)))
            (if (cffi::null-pointer-p (zpoller-wait zp to))
                (progn (signal 'zyre-idle) (%zyre-recv-maybe -1))
                (let ((x (%zyre-recv z)))
@@ -504,7 +512,7 @@ handler to insert a sentinel value into the zyre-pipe output."
                      (%zyre-recv-maybe 0)
                      (zyre-zmsg-to-condition x)))))
          (zyre-recv-maybe (timeout)
-           (declare (type fixnum timeout) (optimize speed))
+           (declare (type fixnum timeout) (optimize speed (safety 0) (debug 0)))
            (let ((to timeout))
              (loop
                (restart-case (return-from zyre-recv-maybe (%zyre-recv-maybe to))
@@ -512,6 +520,7 @@ handler to insert a sentinel value into the zyre-pipe output."
                  (use-value (x) (return-from zyre-recv-maybe x))
                  (poll-some-ms (ms) (setf to ms))))))
          (annotate-event (ev)
+           (declare (optimize speed (safety 0) (debug 0)))
            (when (typep ev 'event) (setf (event-zyre ev) zyre))
            (match ev
              ((enter-event (uuid u))
@@ -527,7 +536,7 @@ handler to insert a sentinel value into the zyre-pipe output."
   (self :pointer))
 
 (defun zsock-destroy (zsock)
-  (declare (type (or zsock cffi:foreign-pointer) zsock))
+  (declare (type (or zsock cffi:foreign-pointer) zsock) (optimize speed (safety 0) (debug 0)))
   (etypecase zsock
     (zsock (zsock-destroy (raw-zsock zsock)))
     (cffi:foreign-pointer
@@ -636,7 +645,7 @@ the various types of zsocks and endpoints."
   "After being sent, CZMQ destroys the frame."
   (declare (type cffi:foreign-pointer zframe dest)
            (type (unsigned-byte 32) flags)
-           (optimize speed))
+           (optimize speed (safety 0) (debug 0)))
   (cffi:with-foreign-object (ptr :pointer)
     (setf (cffi:mem-aref ptr :pointer) zframe)
     (%%zframe-send ptr dest flags)))
@@ -645,6 +654,7 @@ the various types of zsocks and endpoints."
   "A zframe can be made by copying data from a lisp byte vector, or (if data is unspecified) a raw
 foreign buffer that can be copied into directly by accessing the foreign-pointer via
 zframe-foreign-data."
+  (declare (optimize speed (safety 0) (debug 0)))
   (let* ((raw (if (and data size)
                   (cffi:with-pointer-to-vector-data (ptr data) (%zframe-new ptr size))
                   (%zframe-new (cffi:null-pointer) size)))
@@ -661,6 +671,7 @@ zframe-foreign-data."
 
 (defmethod send ((zs zsock) (zf zframe))
   "Sends a single zframe to a zsock.  The zframe is destroyed after this call."
+  (declare (optimize speed (safety 0) (debug 0)))
   (let ((ret (%zframe-send (raw-zframe zf) (raw-zsock zs) 0)))
     (tg:cancel-finalization zf)
     (unless (zerop ret) (zframe-destroy (raw-zframe zf))) ;Destroy manually on error
@@ -673,13 +684,15 @@ zframe-foreign-data."
 
 (defmethod send ((zs zsock) (s string))
   "Sends a string to a zsock."
+  (declare (optimize speed (safety 0) (debug 0)))
   (zsock-send (raw-zsock zs) "s" :string s))
 
 (defun zframe-recv (zs)
   "This receives a raw zframe from a zsock.  GC finalization will handle destroying."
-  (declare (type zsock zs) (optimize speed))
+  (declare (type zsock zs) (optimize speed (safety 0) (debug 0)))
   (labels
       ((zframe-recv (raw-zsock)
+         (declare (optimize speed (safety 0) (debug 0)))
          (let ((zf (%zframe-recv raw-zsock)))
            (if (cffi:null-pointer-p zf)
                (zframe-recv raw-zsock)
@@ -691,9 +704,10 @@ zframe-foreign-data."
 
 (defun zmsg-recv (zs)
   "This receives a raw zmsg from a zsock.  GC finalization will handle destroying."
-  (declare (type zsock zs) (optimize speed))
+  (declare (type zsock zs) (optimize speed (safety 0) (debug 0)))
   (labels
       ((zmsg-recv (raw-zsock)
+         (declare (optimize speed (safety 0) (debug 0)))
          (let ((zm (%zmsg-recv raw-zsock)))
            (if (cffi:null-pointer-p zm)
                (zmsg-recv raw-zsock)
@@ -717,7 +731,7 @@ zframe-foreign-data."
 (defun zstr-recv (zs)
   "Retreives a string from the zsock. If the remote side did not send a string, results may be
 undefined."
-  (declare (type zsock zs) (optimize speed))
+  (declare (type zsock zs) (optimize speed (safety 0) (debug 0)))
   (labels
       ((zstr-recv (raw-zsock)
          (let ((zstr (%zstr-recv raw-zsock)))
@@ -733,7 +747,7 @@ undefined."
 (defun recv (zs &optional (typ *recv-type*))
   "Receives a message from a zsock. The *recv-type* dynamic variable determines in what form the
 messages are received as. Default is strings. This function will block if no messages are pending."
-  (declare (type zsock zs) (optimize speed))
+  (declare (type zsock zs) (optimize speed (safety 0) (debug 0)))
   (ematch typ
     ('zmsg (zmsg-recv zs))
     ('zframe (zframe-recv zs))
@@ -742,16 +756,17 @@ messages are received as. Default is strings. This function will block if no mes
 (defun recv-pipe (zs)
   "Represents the infinite pipe of received zeromq messages. The *recv-type* dynamic variable
 determines in what form the messages are received as. Default is strings."
+  (declare (optimize speed (safety 0) (debug 0)))
   (pipe-cons (recv zs) (recv-pipe zs)))
 
 (defun blank-zframes-pipe (size)
   "Infinite pipe of zframe messages.  Intended for use in speed testing."
-  (declare (optimize speed))
+  (declare (optimize speed (safety 0) (debug 0)))
   (pipe-cons (make-zframe :size size) (blank-zframes-pipe size)))
 
 (defun pipe-zsock-send (zsock pipe)
   "Sends via zeromq the messages in the pipe.  If pipe is infinite, this never returns."
-  (declare (optimize speed))
+  (declare (optimize speed (safety 0) (debug 0)))
   (unless (pipe-endp pipe)
     (send zsock (pipe-first pipe))
     (pipe-zsock-send zsock (pipe-rest pipe))))
