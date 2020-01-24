@@ -38,3 +38,21 @@ Distributed under the MIT license (see LICENSE file)
   :components ((:file "package")
                (:file "zyredir")))
 
+(asdf:defsystem #:zyre/tock-server
+  :description "Sample app that shouts its time once/sec to group tick-tock."
+  :depends-on (:zyre :local-time-duration :local-time)
+  :license "MIT"
+  :entry-point "zyre::tock-server"
+  :serial t
+  :components ((:file "package")
+               (:file "tock")))
+
+(asdf:defsystem #:zyre/tock-client
+  :description "Sample app that compares its system time against shouts to group tick-tock."
+  :depends-on (:zyre :local-time-duration :local-time)
+  :license "MIT"
+  :entry-point "zyre::tock-client"
+  :serial t
+  :components ((:file "package")
+               (:file "tock")))
+

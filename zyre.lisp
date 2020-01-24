@@ -67,6 +67,11 @@ Distributed under the MIT license (see LICENSE file)
 (cffi:defcfun ("zyre_destroy" %zyre-destroy) :void
   (zyre-** :pointer))
 
+(cffi:defcfun ("zyre_set_verbose" zyre-set-verbose) :void
+  (self :pointer))
+
+(cffi:defcfun ("zsys_shutdown" zsys-shutdown) :void)
+
 (cffi:defcfun ("zyre_uuid" zyre-uuid) :string
   (self :pointer))
 
@@ -307,6 +312,10 @@ Distributed under the MIT license (see LICENSE file)
 (cffi:defcfun ("zpoller_terminated" zpoller-terminated) :bool
   (zpoller :pointer))
 
+(cffi:defcfun ("zpoller_set_nonstop" zpoller-set-nonstop) :void
+  (zpoller :pointer)
+  (nonstop :bool))
+
 (defun zhash_destroy (zhash)
   (declare (type cffi:foreign-pointer zhash))
   (cffi:with-foreign-object (ptr :pointer)
@@ -442,7 +451,7 @@ can be any valid event returned from zyre-pipe."
 (defun stop-zyre () (invoke-restart 'stop-zyre))
 (defun poll-some-ms (ms) (invoke-restart 'poll-some-ms ms))
 
-(defun zyre-pipe (&key (name (cffi:null-pointer)) headers group interface port)
+(defun zyre-pipe (&key (name (cffi:null-pointer)) headers group interface port verbose)
   "Initializes and starts up a Zyre node and returns an infinite pipe of Zyre events as conditions.
 Takes :name as the short name of the node, otherwise defaults to the first few digits of the UUID.
 The :headers arg is a list of (key . value) string pairs, i.e. an alist. The :group key can either
@@ -457,14 +466,17 @@ pipe may block (depending on the handler of the zyre-idle condition, described b
 always count on the first start-event being returned immediately.
 
 When there are no new events, a condition of type zyre-idle is signalled. Valid restarts are
-'try-again, 'poll-some-ms, and 'stop. The default action is to block the running thread.
+'use-value, 'poll-some-ms, and 'stop. The default action is to block the running thread.
 'poll-some-ms takes a argument in milliseconds to continue waiting for, at which point the condition
-will be resignalled. 'stop initiates a graceful exit from the zyre network."
+will be resignalled. 'stop initiates a graceful exit from the zyre network. 'use-value allows a
+handler to insert a sentinel value into the zyre-pipe output."
   (let* ((z (zyre-new name))
          (zp (zpoller-new (%zyre-socket z) :pointer (cffi:null-pointer)))
-         (zyre (make-instance 'zyre-state :raw-zyre z :raw-zpoller zp 
+         (zyre (make-instance 'zyre-state :raw-zyre z :raw-zpoller zp
                                           :uuid (zyre-uuid z) :name (zyre-name z))))
     (declare (type cffi:foreign-pointer z zp) (type zyre-state zyre))
+    (when verbose (zyre-set-verbose z))
+    (zpoller-set-nonstop zp t)
     (tg:finalize zyre (lambda () (zpoller-destroy zp) (zyre-destroy z)))
     (when interface (zyre-set-interface z interface))
     (when group (join zyre group))
@@ -480,7 +492,9 @@ will be resignalled. 'stop initiates a graceful exit from the zyre network."
                :empty-pipe
                (pipe-cons (zyre-recv-maybe 0) (next-event-pipe))))
          (start-event () (make-condition 'start-event :uuid (uuid zyre) :name (name zyre)))
-         (stop-event () (make-condition 'stop-event :uuid (uuid zyre) :name (name zyre)))
+         (stop-event ()
+           (prog1 (make-condition 'stop-event :uuid (uuid zyre) :name (name zyre))
+             (stop zyre)))
          (%zyre-recv-maybe (to)
            (declare (type fixnum to) (optimize speed))
            (if (cffi::null-pointer-p (zpoller-wait zp to))
@@ -489,12 +503,14 @@ will be resignalled. 'stop initiates a graceful exit from the zyre network."
                  (if (cffi:null-pointer-p x)
                      (%zyre-recv-maybe 0)
                      (zyre-zmsg-to-condition x)))))
-         (zyre-recv-maybe (to)
-           (declare (type fixnum to) (optimize speed))
-           (restart-case (%zyre-recv-maybe to)
-             (stop-zyre () (prog1 (stop-event) (stop zyre)))
-             (use-value (x) x)
-             (poll-some-ms (ms) (zyre-recv-maybe ms))))
+         (zyre-recv-maybe (timeout)
+           (declare (type fixnum timeout) (optimize speed))
+           (let ((to timeout))
+             (loop
+               (restart-case (return-from zyre-recv-maybe (%zyre-recv-maybe to))
+                 (stop-zyre () (return-from zyre-recv-maybe (stop-event)))
+                 (use-value (x) (return-from zyre-recv-maybe x))
+                 (poll-some-ms (ms) (setf to ms))))))
          (annotate-event (ev)
            (when (typep ev 'event) (setf (event-zyre ev) zyre))
            (match ev
