@@ -61,6 +61,11 @@ Distributed under the MIT license (see LICENSE file)
 
 (cffi:use-foreign-library libzyre)
 
+;; czmq screws around with signal handlers in way that seems to cause problems/hangs (in czmq) while
+;; in the Lisp environment.  This environment variables disables that.
+#-windows (uiop/image:register-image-restore-hook
+ (lambda () (setf (osicat:environment-variable "ZSYS_SIGHANDLER") "false")))
+
 (cffi:defcfun ("zyre_new" zyre-new) :pointer
   (name :string))
 
@@ -439,7 +444,7 @@ can be any valid event returned from zyre-pipe."
   (when (consp group) (mapc (lambda (x) (leave origin x)) group))
   (etypecase origin
     (zyre-state
-     (setf (group origin) (delete-if (lambda (x) (equal x group)) (group origin)))
+     (setf (group origin) (delete-if (lambda (x) (equal x group)) (the list (group origin))))
      (zyre-leave (raw-zyre origin) group))
     (event (leave (event-zyre origin) group))))
 
@@ -672,7 +677,7 @@ zframe-foreign-data."
 (defmethod send ((zs zsock) (zf zframe))
   "Sends a single zframe to a zsock.  The zframe is destroyed after this call."
   (declare (optimize speed (safety 0) (debug 0)))
-  (let ((ret (%zframe-send (raw-zframe zf) (raw-zsock zs) 0)))
+  (let ((ret (the fixnum (%zframe-send (raw-zframe zf) (raw-zsock zs) 0))))
     (tg:cancel-finalization zf)
     (unless (zerop ret) (zframe-destroy (raw-zframe zf))) ;Destroy manually on error
     ret))
