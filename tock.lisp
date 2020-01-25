@@ -27,7 +27,7 @@ way to make sure. (This reduces jitter by a few milliseconds at the cost of some
          (to (local-time:timestamp-minimize-part
               (local-time:timestamp+ (local-time:now) 2 :sec)
               :nsec))
-         now)
+         now ts)
     (handler-bind ((zyre-idle
                      (lambda (x) (declare (ignore x))
                        (setf now (local-time:now))
@@ -35,8 +35,9 @@ way to make sure. (This reduces jitter by a few milliseconds at the cost of some
                            (use-value 'quiescent)
                            (poll-some-ms (ms-until to now))))))
       (loop
-        (setf zp (pipe-sink-until (lambda (x) (eq x 'quiescent)) zp))
+        (setf zp (pipe-sink-until (lambda (x) (eq x 'quiescent)) zp)
+              ts (local-time:format-timestring nil now))
         (if (pipe-endp zp) (return-from tock-server nil))
-        (format t ">> Tock! (~a)~%" (local-time:format-timestring nil now))
-        (shout z "tick-tock" (local-time:format-timestring nil now))
+        (shout z "tick-tock" ts)
+        (format t ">> Tock! (~a)~%" ts)
         (setf to (local-time:timestamp+ to 1 :sec) zp (pipe-rest zp))))))
