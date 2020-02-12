@@ -6,20 +6,20 @@ Distributed under the MIT license (see LICENSE file)
 
 (in-package #:zyre)
 
-(defconstant +zyredir+ #p"/tmp/zyre/")
+(defparameter *zyredir* #p"/tmp/zyre/")
 
 (defun zyredir ()
   "Maintains a directory of *.json files containing all currently online peers.
 Removes files when peers exit. JSON data contains name, address, and headers, respectively."
   (labels
       ((json-f (u)
-         (merge-pathnames (make-pathname :name u :type "json" :defaults +zyredir+) +zyredir+))
+         (merge-pathnames (make-pathname :name u :type "json" :defaults *zyredir*) *zyredir*))
        (json-rm (&optional (l (directory (merge-pathnames
-                                          (make-pathname :name :wild :type "json") +zyredir+))))
+                                          (make-pathname :name :wild :type "json") *zyredir*))))
          (unless (endp l)
            (delete-file (car l))
            (json-rm (cdr l)))))
-    (ensure-directories-exist +zyredir+)
+    (ensure-directories-exist *zyredir*)
     (json-rm)                           ;Clear directory of *.json
     (pipe-mapc
      (lambda (x)
