@@ -9,7 +9,7 @@ Distributed under the MIT license (see LICENSE file)
 
 (asdf:defsystem #:zyre
   :description "Zyre is a ZeroMQ-based network protocol for clusters and service discovery."
-  :depends-on (:cffi :trivial-garbage :trivia :osicat :uiop)
+  :depends-on (:cffi :trivial-garbage :trivia :uiop)
   :author "Jesse Off <jesseoff@me.com>"
   :license "MIT"
   :version "1"

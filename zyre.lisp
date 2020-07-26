@@ -64,7 +64,7 @@ Distributed under the MIT license (see LICENSE file)
 ;; czmq screws around with signal handlers in way that seems to cause problems/hangs (in czmq) while
 ;; in the Lisp environment.  This environment variables disables that.
 #-windows (uiop/image:register-image-restore-hook
- (lambda () (setf (osicat:environment-variable "ZSYS_SIGHANDLER") "false")))
+ (lambda () (setf (uiop:getenv "ZSYS_SIGHANDLER") "false")))
 
 (cffi:defcfun ("zyre_new" zyre-new) :pointer
   (name :string))
