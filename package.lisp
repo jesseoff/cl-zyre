@@ -58,6 +58,7 @@ Distributed under the MIT license (see LICENSE file)
            ;; Restarts
            #:poll-some-ms
            #:stop-zyre
+           #:use-value
 
            ;; Zyre actions
            #:whisper
