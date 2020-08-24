@@ -67,6 +67,9 @@ Distributed under the MIT license (see LICENSE file)
            #:leave
            #:stop
 
+           ;; Zyre convenience functions
+           #:zyre-sleep
+
            ;; Pipe utilities
            #:pipe-first
            #:pipe-cons

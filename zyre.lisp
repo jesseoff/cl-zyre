@@ -775,3 +775,19 @@ determines in what form the messages are received as. Default is strings."
   (unless (pipe-endp pipe)
     (send zsock (pipe-first pipe))
     (pipe-zsock-send zsock (pipe-rest pipe))))
+
+(defun zyre-sleep (zp timeout)
+  "Blocks execution for timeout seconds, all the while processing new zyre events and sending them
+as signals."
+  (let* ((now (get-internal-real-time))
+         (to (+ now (* internal-time-units-per-second timeout))))
+    (handler-bind ((zyre:zyre-idle
+                     (lambda (x) (declare (ignore x))
+                       (setf now (get-internal-real-time))
+                       (if (<= to now)
+                           (zyre:use-value 'expired)
+                           (zyre:poll-some-ms (* *internal-time-units-per-ms* (- to now)))))))
+      (zyre:pipe-rest (zyre:pipe-sink-until (lambda (x)
+                                              (when (subtypep (type-of x) 'condition) (signal x))
+                                              (eq x 'expired))
+                                            zp)))))

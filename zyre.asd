@@ -12,7 +12,7 @@ Distributed under the MIT license (see LICENSE file)
   :depends-on (:cffi :trivial-garbage :trivia :uiop)
   :author "Jesse Off <jesseoff@me.com>"
   :license "MIT"
-  :version "1"
+  :version "1.1"
   :serial t
   :components ((:file "package")
                (:file "fifo")
